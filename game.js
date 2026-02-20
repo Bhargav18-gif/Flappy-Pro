@@ -10,11 +10,11 @@ if (!CVS || !CTX || !PREV || !PCTX) {
   throw new Error('Game initialization failed: missing DOM elements');
 }
 
-const GRAVITY   = 0.42;
-const JUMP      = -8.5;
+const GRAVITY   = 0.38;
+const JUMP      = -8.0;
 const WIN_SCORE = 10;
 const PIPE_W    = 64;
-const PIPE_GAP  = 180;
+let pipeGap     = 200;
 const PIPE_INT  = 90;
 const BASE_SPD  = 3.2;
 const BIRD_COLORS = ['#00f5c4', '#ff3cac', '#ffd166', '#7b61ff', '#ff8c00'];
@@ -23,6 +23,7 @@ const BIRD_COLORS = ['#00f5c4', '#ff3cac', '#ffd166', '#7b61ff', '#ff8c00'];
 let W, H, state, frame, score, best, lives, pipes, particles, speedMult;
 let bird, bgScroll, groundScroll;
 let isMuted = false;
+let godMode = false;
 
 // ─── AUDIO ───────────────────────────────────────────────────────────────────
 let actx;
@@ -42,7 +43,8 @@ function playTone(freq, type, dur, gainVal = 0.25) {
     g.connect(a.destination);
     o.type = type;
     o.frequency.setValueAtTime(freq, a.currentTime);
-    g.gain.setValueAtTime(gainVal, a.currentTime);
+    const volScale = (window.innerWidth < 600) ? 0.6 : 1.0;
+    g.gain.setValueAtTime(gainVal * volScale, a.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
     o.start();
     o.stop(a.currentTime + dur);
@@ -60,7 +62,7 @@ function preloadWinAudio() {
   if (winAudio) return; // Already preloaded
   try {
     winAudio = new Audio('assets/win.mp3');
-    winAudio.volume = 0.7;
+    winAudio.volume = (window.innerWidth < 600) ? 0.4 : 0.7;
     winAudio.preload = 'auto';
     winAudio.onerror = () => {
       console.warn('[Game] Win audio failed to load, using synth fallback');
@@ -75,6 +77,7 @@ function playWin() {
   try {
     // Try to play custom audio file if preloaded
     if (winAudio) {
+      winAudio.volume = (window.innerWidth < 600) ? 0.4 : 0.7;
       winAudio.currentTime = 0; // Reset to start
       const playPromise = winAudio.play();
       if (playPromise !== undefined) {
@@ -97,6 +100,7 @@ function playWinSynth() {
   try {
     const a = getActx();
     const notes = [523, 659, 784, 1047];
+    const volScale = (window.innerWidth < 600) ? 0.6 : 1.0;
     notes.forEach((f, i) => {
       const o = a.createOscillator();
       const g = a.createGain();
@@ -105,7 +109,7 @@ function playWinSynth() {
       o.type = 'square';
       o.frequency.value = f;
       g.gain.setValueAtTime(0, a.currentTime + i * 0.15);
-      g.gain.linearRampToValueAtTime(0.2, a.currentTime + i * 0.15 + 0.05);
+      g.gain.linearRampToValueAtTime(0.2 * volScale, a.currentTime + i * 0.15 + 0.05);
       g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + i * 0.15 + 0.4);
       o.start(a.currentTime + i * 0.15);
       o.stop(a.currentTime + i * 0.15 + 0.5);
@@ -120,6 +124,8 @@ function resize() {
   const wrap = document.getElementById('game-wrap');
   W = CVS.width  = wrap.clientWidth;
   H = CVS.height = wrap.clientHeight;
+  // Adjust pipe gap for short landscape screens to prevent impossible pipes
+  pipeGap = (H < 550) ? 160 : 200;
 }
 
 // ─── BIRD DRAWING ─────────────────────────────────────────────────────────────
@@ -187,7 +193,7 @@ function shadeColor(hex, pct) {
 
 // ─── PIPE DRAWING ─────────────────────────────────────────────────────────────
 function drawPipe(x, topH, gapY) {
-  const botY = gapY + PIPE_GAP;
+  const botY = gapY + pipeGap;
   const botH = H - botY - 60;
 
   const drawOnePipe = (px, py, ph, flip) => {
@@ -339,7 +345,8 @@ function spawnScorePopup(x, y) {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 function init(fromState = 'start') {
   frame = 0; score = 0; lives = 3; pipes = []; particles = [];
-  bgScroll = 0; groundScroll = 0; speedMult = 1;
+  bgScroll = 0; groundScroll = 0;
+  speedMult = 1;
 
   bird = {
     x: W * 0.2,
@@ -439,6 +446,8 @@ function typeCustomMessage() {
       i++;
       setTimeout(type2, 60);
     } else {
+      p1.setAttribute('data-text', p1.textContent);
+      p2.setAttribute('data-text', p2.textContent);
       p1.classList.add('glitch-text');
       p2.classList.add('glitch-text');
     }
@@ -466,7 +475,7 @@ function checkCollision(pipe) {
   const bx = bird.x, by = bird.y, bw = bird.w - 8, bh = bird.h - 6;
   const px = pipe.x, pw = PIPE_W;
   if (bx + bw < px || bx > px + pw) return false;
-  const topH = pipe.topH, botY = topH + PIPE_GAP;
+  const topH = pipe.topH, botY = topH + pipeGap;
   return by < topH || by + bh > botY;
 }
 
@@ -529,8 +538,9 @@ function loop() {
     if (bird.y <= 0) { bird.y = 0; bird.vy = 0; }
 
     if (frame % PIPE_INT === 0) {
-      const minT = 60, maxT = H - 60 - PIPE_GAP - 60;
-      pipes.push({ x: W, topH: minT + Math.random() * (maxT - minT), passed: false });
+      const margin = (H < 550) ? 50 : 80;
+      const maxT = Math.max(margin + 20, H - margin - pipeGap - margin);
+      pipes.push({ x: W, topH: margin + Math.random() * (maxT - margin), passed: false });
     }
 
     pipes.forEach(p => {
@@ -579,6 +589,7 @@ function loop() {
 // ─── HIT HANDLER ──────────────────────────────────────────────────────────────
 let hitCooldown = false;
 function handleHit() {
+  if (godMode) return;
   if (hitCooldown) return;
   hitCooldown = true;
   setTimeout(() => hitCooldown = false, 500);
@@ -695,6 +706,8 @@ function bootGame() {
     const wrap = document.getElementById('game-wrap');
     wrap.addEventListener('mousedown', onInput, { passive: true });
     wrap.addEventListener('touchstart', e => {
+      // Allow touch on buttons and settings to propagate (generate clicks)
+      if (e.target.closest('button') || e.target.closest('.settings-panel')) return;
       e.preventDefault();
       onInput(e);
     }, { passive: false });
@@ -720,6 +733,29 @@ function bootGame() {
 
     if (winRetryBtn) winRetryBtn.addEventListener('click', () => init('play'));
     else console.warn('[Game] win-retry-btn not found');
+
+    // Cheat Code: Type 'god' to toggle God Mode
+    let cheatCode = ['g', 'o', 'd'];
+    let cheatIdx = 0;
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key.toLowerCase() === cheatCode[cheatIdx]) {
+        cheatIdx++;
+        if (cheatIdx === cheatCode.length) {
+          godMode = !godMode;
+          cheatIdx = 0;
+          console.log(`[Game] God Mode: ${godMode ? 'ON' : 'OFF'}`);
+          const scoreEl = document.getElementById('score');
+          if (scoreEl) {
+            scoreEl.style.color = godMode ? '#ffd166' : '#fff';
+            scoreEl.style.textShadow = godMode ? '0 0 20px #ffd166' : '';
+          }
+          playScore();
+        }
+      } else {
+        cheatIdx = 0;
+      }
+    });
 
     // Window resize handler
     window.addEventListener('resize', () => { resize(); });
