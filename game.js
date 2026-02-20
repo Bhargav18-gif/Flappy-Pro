@@ -15,8 +15,8 @@ const JUMP      = -8.0;
 const WIN_SCORE = 10;
 const PIPE_W    = 64;
 let pipeGap     = 200;
-const PIPE_INT  = 225;
-const BASE_SPD  = 1.28;
+const PIPE_INT  = 100;
+const BASE_SPD  = 3.0;
 const BIRD_COLORS = ['#00f5c4', '#ff3cac', '#ffd166', '#7b61ff', '#ff8c00'];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
