@@ -562,7 +562,6 @@ function loop() {
         spawnParticles(bird.x, bird.y);
         spawnScorePopup(bird.x + 20, bird.y - 20);
         playScore();
-        speedMult += 0.04;
 
         if (score >= WIN_SCORE) {
           setState('win');
