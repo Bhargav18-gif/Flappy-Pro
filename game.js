@@ -124,8 +124,7 @@ function resize() {
   const wrap = document.getElementById('game-wrap');
   W = CVS.width  = wrap.clientWidth;
   H = CVS.height = wrap.clientHeight;
-  // Adjust pipe gap for short landscape screens to prevent impossible pipes
-  pipeGap = (H < 550) ? 160 : 200;
+  pipeGap = 200;
 }
 
 // ─── BIRD DRAWING ─────────────────────────────────────────────────────────────
@@ -538,7 +537,7 @@ function loop() {
     if (bird.y <= 0) { bird.y = 0; bird.vy = 0; }
 
     if (frame % PIPE_INT === 0) {
-      const margin = (H < 550) ? 50 : 80;
+      const margin = 80;
       const maxT = Math.max(margin + 20, H - margin - pipeGap - margin);
       pipes.push({ x: W, topH: margin + Math.random() * (maxT - margin), passed: false });
     }
