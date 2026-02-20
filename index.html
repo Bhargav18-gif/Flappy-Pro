@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Flappy Pro - A fun and challenging bird flying game with authentication">
+  <meta name="theme-color" content="#0d0d2b">
+  <title>Flappy Pro · SK</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="stars"></div>
+
+<!-- LOADING INDICATOR -->
+<div id="loading-spinner" style="position:fixed; inset:0; z-index:999; background:linear-gradient(135deg, #0d0d2b 0%, #1a1040 100%); display:flex; align-items:center; justify-content:center; font-family:'Oxanium', sans-serif;">
+  <div style="text-align:center;">
+    <div style="font-size:3rem; margin-bottom:20px; animation:pulse 1.5s infinite;">⬆️</div>
+    <div style="color:#00f5c4; font-size:1.2rem; letter-spacing:2px;">INITIALIZING...</div>
+  </div>
+  <style>
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: translateY(0); }
+      50% { opacity: 0.5; transform: translateY(-10px); }
+    }
+  </style>
+</div>
+
+<!-- LOGIN CONTAINER (shown when not authenticated) -->
+<div id="login-container" style="display:none;">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-text">FLAPPY<br>PRO</div>
+        <div class="login-logo-sub">Secure Gaming Portal</div>
+      </div>
+
+      <div class="login-form-group">
+        <label for="email">Email</label>
+        <input 
+          type="email" 
+          id="email" 
+          name="email"
+          placeholder="your@email.com"
+          autocomplete="email"
+          required
+          aria-label="Email address"
+        >
+      </div>
+
+      <div class="login-form-group">
+        <label for="password">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+          required
+          aria-label="Password"
+        >
+      </div>
+
+      <div class="login-button-group">
+        <button id="login-btn" type="button" aria-label="Login to your account">Login</button>
+        <button id="register-btn" type="button" aria-label="Create a new account">Sign Up</button>
+      </div>
+
+      <div id="auth-msg"></div>
+
+      <div class="login-features">
+        <div class="login-feature">
+          <strong>🎯</strong>
+          Score 10<br>to WIN
+        </div>
+        <div class="login-feature">
+          <strong>❤️</strong>
+          3 Lives<br>per Run
+        </div>
+        <div class="login-feature">
+          <strong>⚡</strong>
+          Gets<br>Faster
+        </div>
+        <div class="login-feature">
+          <strong>🏆</strong>
+          Rank<br>System
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME CONTAINER (shown when authenticated) -->
+<div id="game-container" style="display:none;">
+
+<div id="game-wrap">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-wrap">
+      <div id="score">0</div>
+      <div id="score-label">Score</div>
+    </div>
+    <div id="best-wrap">
+      <div id="best-label">Best</div>
+      <div id="best-score">0</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div id="settings-panel" class="settings-panel">
+    <button id="settings-toggle" class="settings-toggle" aria-label="Open settings menu">⚙️</button>
+    <div id="settings-menu" class="settings-menu" style="display:none;">
+      <div class="settings-header">Settings</div>
+      <div class="user-info">
+        <div class="user-label">Logged in as:</div>
+        <div class="user-email" id="user-email">user@email.com</div>
+      </div>
+      <div class="settings-divider"></div>
+      <button id="logout-btn" class="logout-btn" type="button" aria-label="Logout from your account">Sign Out</button>
+    </div>
+  </div>
+
+  <div id="lives-wrap">
+    <div class="life-dot" id="life-1"></div>
+    <div class="life-dot" id="life-2"></div>
+    <div class="life-dot" id="life-3"></div>
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="screen visible" id="start-screen">
+    <div class="game-logo">FLAPPY<br>PRO</div>
+    <div class="logo-sub">by SK</div>
+
+    <canvas class="bird-preview" id="bird-preview" width="64" height="48"></canvas>
+
+    <div class="tap-hint">
+      <div class="tap-ring">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14l5-5 5 5"/></svg>
+      </div>
+      <span class="tap-label">Tap or Space to fly</span>
+    </div>
+
+    <div class="tips-row">
+      <div class="tip-card"><span class="tip-icon">🎯</span><span>Score 10<br>to win</span></div>
+      <div class="tip-card"><span class="tip-icon">❤️</span><span>3 lives<br>per run</span></div>
+      <div class="tip-card"><span class="tip-icon">⚡</span><span>Gets faster<br>over time</span></div>
+    </div>
+  </div>
+
+  <!-- DEAD SCREEN -->
+  <div class="screen" id="dead-screen">
+    <div class="result-card">
+      <div class="result-title">Game Over</div>
+      <div class="result-scores">
+        <div class="rs-block">
+          <span class="rs-label">Score</span>
+          <span class="rs-val" id="final-score">0</span>
+        </div>
+        <div class="divider"></div>
+        <div class="rs-block">
+          <span class="rs-label">Best</span>
+          <span class="rs-val gold" id="final-best">0</span>
+        </div>
+      </div>
+      <div class="rank-badge rank-bronze" id="rank-badge">Rookie</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="retry-btn" type="button" aria-label="Retry the game">Retry</button>
+        <button class="btn btn-ghost" id="menu-btn" type="button" aria-label="Return to main menu">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div class="screen" id="win-screen">
+    <!-- Animated background elements -->
+    <div class="win-confetti" id="confetti-container"></div>
+    <div class="win-glow"></div>
+    
+    <!-- Win card content -->
+    <div class="win-card">
+      <!-- Trophy icon -->
+      <div class="win-trophy">🏆</div>
+      
+      <!-- Title -->
+      <div class="win-title">VICTORY!</div>
+      <div class="win-title-sub">PERFECT RUN</div>
+      
+      <!-- Score display -->
+      <div class="win-score-display">
+        <div class="score-value">10</div>
+        <div class="score-label">POINTS</div>
+      </div>
+      
+      <!-- Stars -->
+      <div class="win-stars">
+        <div class="win-star">⭐</div>
+        <div class="win-star">⭐</div>
+        <div class="win-star">⭐</div>
+      </div>
+      
+      <!-- Stats badges -->
+      <div class="win-badges">
+        <div class="badge">🎯 FLAWLESS</div>
+        <div class="badge">⚡ SPEEDSTER</div>
+      </div>
+      
+      <!-- Action buttons -->
+      <div class="win-actions">
+        <button class="btn btn-primary win-primary" id="win-retry-btn" type="button" aria-label="Play another round">🎮 Play Again</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer">DESIGNER: SK &nbsp;·&nbsp; 8328375448</div>
+</div>
+
+</div>
+<!-- end game-container -->
+
+<script type="module" src="route-guard.js" defer></script>
+<script src="game.js" defer></script>
+
+</body>
+</html>
