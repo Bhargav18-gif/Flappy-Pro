@@ -15,8 +15,8 @@ const JUMP      = -8.0;
 const WIN_SCORE = 10;
 const PIPE_W    = 64;
 let pipeGap     = 200;
-const PIPE_INT  = 85;
-const BASE_SPD  = 3.6;
+const PIPE_INT  = 90;
+const BASE_SPD  = 3.2;
 const BIRD_COLORS = ['#00f5c4', '#ff3cac', '#ffd166', '#7b61ff', '#ff8c00'];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -124,7 +124,8 @@ function resize() {
   const wrap = document.getElementById('game-wrap');
   W = CVS.width  = wrap.clientWidth;
   H = CVS.height = wrap.clientHeight;
-  pipeGap = 200;
+  // Adjust pipe gap for short landscape screens to prevent impossible pipes
+  pipeGap = (H < 550) ? 160 : 200;
 }
 
 // ─── BIRD DRAWING ─────────────────────────────────────────────────────────────
@@ -537,7 +538,7 @@ function loop() {
     if (bird.y <= 0) { bird.y = 0; bird.vy = 0; }
 
     if (frame % PIPE_INT === 0) {
-      const margin = 80;
+      const margin = (H < 550) ? 50 : 80;
       const maxT = Math.max(margin + 20, H - margin - pipeGap - margin);
       pipes.push({ x: W, topH: margin + Math.random() * (maxT - margin), passed: false });
     }
